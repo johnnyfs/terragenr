@@ -23,6 +23,8 @@ impl App {
         let mut events = self.video.sdl.event_pump().map_err(|e|e.to_string())?;
 
         'game: loop { 
+            self.scene.render(&self.video);
+
             for event in events.poll_iter() {
                 match event {
                     Event::Quit { .. } => break 'game,

@@ -5,6 +5,7 @@ mod args;
 mod app;
 mod scene;
 mod video;
+mod octree;
 
 fn main() {
     let args = args::Args::parse_();
