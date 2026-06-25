@@ -1,15 +1,20 @@
 use serde::Deserialize;
+use serde_inline_default::serde_inline_default;
 use serde_yaml;
 use log;
 use validator::Validate;
 use crate::octree::{Octree, NodeResult};
 
+#[serde_inline_default]
 #[derive(Deserialize, Debug, Validate)]
 pub struct SceneSpec {
     #[validate(range(min = 1))]
     world_size: u32,
     #[validate(range(min = 1))]
     chunk_size: u32,
+
+    #[serde_inline_default(255)]
+    max_lod: u32
 }
 
 pub struct Scene {
@@ -32,6 +37,7 @@ impl SceneSpec {
         let octree = Octree::from(
             self.world_size,
             self.chunk_size,
+            self.max_lod,
             0.1,
             |node|{
                 if node.size == 32 {

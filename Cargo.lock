@@ -646,6 +646,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-inline-default"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bf03b7a5281cfd4013bc788d057b0f09fc634397d83bc8973c955bd4f32727a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "serde_core"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -774,6 +785,7 @@ dependencies = [
  "sdl3",
  "sdl3-sys",
  "serde",
+ "serde-inline-default",
  "serde_yaml",
  "stderrlog",
  "validator",

@@ -9,6 +9,7 @@ log = "0.4.33"
 sdl3 = "0.18.4"
 sdl3-sys = "0.6.6"
 serde = { version = "1.0.228", features = ["derive"] }
+serde-inline-default = "1.0.1"
 serde_yaml = "0.9.34"
 stderrlog = "0.6.0"
 validator = { version = "0.20.0", features = ["derive"] }
