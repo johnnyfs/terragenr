@@ -1,20 +1,51 @@
+use std::{collections::HashMap, ops::Range};
+
+use ego_tree::Tree;
 use serde::Deserialize;
 use serde_inline_default::serde_inline_default;
 use serde_yaml;
 use log;
 use validator::Validate;
+use glam::Vec3;
 use crate::octree::{Octree, NodeResult};
+
+#[derive(Deserialize, Debug)]
+pub struct SdfSpec {
+    height_range: Range<u32>
+}
+
+#[derive(Deserialize, Debug)]
+pub enum SdfParameterOverride {
+    HeightRange { height_range: Range<u32> }
+}
+
+#[derive(Deserialize, Debug)]
+pub enum SceneNodeType  {
+    Plane { pos: Vec3, size: Vec3 },
+}
+
+#[derive(Deserialize, Debug, Validate)]
+pub struct SceneNodeSpec {
+    kind: SceneNodeType,
+    name: String,
+    overrides: Vec<SdfParameterOverride>,
+}
 
 #[serde_inline_default]
 #[derive(Deserialize, Debug, Validate)]
 pub struct SceneSpec {
     #[validate(range(min = 1))]
     world_size: u32,
+
     #[validate(range(min = 1))]
     chunk_size: u32,
 
     #[serde_inline_default(255)]
-    max_lod: u32
+    max_lod: u32,
+
+    sdf: SdfSpec,
+
+    nodes: Tree<SceneNodeSpec>
 }
 
 pub struct Scene {

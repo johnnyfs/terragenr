@@ -1,3 +1,10 @@
 world_size: 256
 chunk_size: 128
 max_lod: 4 
+
+nodes:
+  main:
+    kind:
+      Plane:
+        pos: [0.0, 0.0, 0.0],
+        size: [256, 256, 256]

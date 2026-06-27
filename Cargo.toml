@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
+ego-tree = { version = "0.11.0", features = ["serde"] }
+glam = { version = "0.33.1", features = ["serde"] }
 log = "0.4.33"
 sdl3 = "0.18.4"
 sdl3-sys = "0.6.6"

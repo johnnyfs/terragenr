@@ -216,6 +216,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ego-tree"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b04dc5a38e4f151a79d9f2451ae6037fb6eaf5cba34771f44781f80e508498e3"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -264,6 +273,15 @@ dependencies = [
  "futures-task",
  "pin-project-lite",
  "slab",
+]
+
+[[package]]
+name = "glam"
+version = "0.33.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "898f5a568a84989b6c0f8caa50a93074b97dbdc58fc6d9543157bb4562758933"
+dependencies = [
+ "serde_core",
 ]
 
 [[package]]
@@ -781,6 +799,8 @@ name = "terragenr"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "ego-tree",
+ "glam",
  "log",
  "sdl3",
  "sdl3-sys",

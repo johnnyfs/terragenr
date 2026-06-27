@@ -1,14 +1,12 @@
+use glam::UVec3;
+
 pub struct ChunkRequest {
-    x: u32,
-    y: u32,
-    z: u32,
+    pos: UVec3,
     lod: u32
 }
 
 pub struct Node {
-    pub x: u32,
-    pub y: u32,
-    pub z: u32,
+    pub pos: UVec3,
     pub size: u32,
     pub lod: u32,
 }
@@ -39,57 +37,58 @@ impl Octree {
         Octree { world_size, chunk_size, max_lod, error_threshold, test, emit }
     }
 
-    fn chunk(&self, x: u32, y: u32, z: u32, size: u32, lod: u32) {
+    fn chunk(&self, pos: UVec3, size: u32, lod: u32) {
         let step = self.chunk_size as usize;
         let lod_diff = (self.world_size / self.chunk_size).ilog2();
         // A node sufficient *above* the chunk boundary has lod < lod_diff; its
         // emitted chunks sit at the boundary, so the chunk-relative lod is 0.
         let chunk_lod = lod.saturating_sub(lod_diff);
-        for x in (x..x + size).step_by(step) {
-            for y in (y..y + size).step_by(step) {
-                for z in (z..z + size).step_by(step) {
-                    (self.emit)(&ChunkRequest { x, y, z, lod: chunk_lod })
+        for x in (pos.x..pos.x + size).step_by(step) {
+            for y in (pos.y..pos.y + size).step_by(step) {
+                for z in (pos.z..pos.z + size).step_by(step) {
+                    (self.emit)(&ChunkRequest { pos: UVec3::new(x, y, z), lod: chunk_lod })
                 }
             }
         }
     }
 
-    fn handle(&self, x: u32, y: u32, z: u32, size: u32, lod: u32) {
-        match (self.test)(Node { x, y, z, size, lod })  {
+    fn handle(&self, pos: UVec3, size: u32, lod: u32) {
+        match (self.test)(Node { pos, size, lod })  {
             NodeResult::Empty => {
-                log::debug!("Node at ({}, {}, {}) with size {} and LOD {} is empty", x, y, z, size, lod);
+                log::debug!("Node at {} with size {} and LOD {} is empty", pos, size, lod);
             },
             NodeResult::Projected { error } => {
                 if error <= self.error_threshold {
-                    log::debug!("Node at ({}, {}, {}) with size {} and LOD {} is projected with error {} <= {}, emitting chunk(s)", x, y, z, size, lod, error, self.error_threshold);
-                    self.chunk(x, y, z, size, lod)
+                    log::debug!("Node at {} with size {} and LOD {} is projected with error {} <= {}, emitting chunk(s)", pos, size, lod, error, self.error_threshold);
+                    self.chunk(pos, size, lod)
                 } else {
                     if lod >= self.max_lod {
-                        log::debug!("Node at ({}, {}, {}) with size {} is at max LOD {}, emitting chunk(s)", x, y, z, size, lod);
-                        self.chunk(x, y, z, size, lod);
+                        log::debug!("Node at {} with size {} is at max LOD {}, emitting chunk(s)", pos, size, lod);
+                        self.chunk(pos, size, lod);
                     } else if size > self.chunk_size {
-                        log::debug!("Node at ({}, {}, {}) with size {} and LOD {} is projected with error {}, descending", x, y, z, size, lod, error);
+                        log::debug!("Node at {} with size {} and LOD {} is projected with error {}, descending", pos, size, lod, error);
                         let new_size = size / 2;
                         let new_lod = lod + 1;
-                        self.handle(x, y, z, new_size, new_lod);
-                        self.handle(x, y, z + new_size, new_size, new_lod);
-                        self.handle(x, y + new_size, z, new_size, new_lod);
-                        self.handle(x, y + new_size, z + new_size, new_size, new_lod);
-                        self.handle(x + new_size, y, z, new_size, new_lod);
-                        self.handle(x + new_size, y, z + new_size, new_size, new_lod);
-                        self.handle(x + new_size, y + new_size, z, new_size, new_lod);
-                        self.handle(x + new_size, y + new_size, z + new_size, new_size, new_lod);
+                        let s = UVec3::splat(new_size);
+                        self.handle(pos, new_size, new_lod);
+                        self.handle(pos + UVec3::new(0, 0, s.z), new_size, new_lod);
+                        self.handle(pos + UVec3::new(0, s.y, 0), new_size, new_lod);
+                        self.handle(pos + UVec3::new(0, s.y, s.z), new_size, new_lod);
+                        self.handle(pos + UVec3::new(s.x, 0, 0), new_size, new_lod);
+                        self.handle(pos + UVec3::new(s.x, 0, s.z), new_size, new_lod);
+                        self.handle(pos + UVec3::new(s.x, s.y, 0), new_size, new_lod);
+                        self.handle(pos + s, new_size, new_lod);
                     } else {
-                        log::debug!("Node at ({}, {}, {}) with size {} and LOD {} is projected with error {}, but cannot descend further", x, y, z, size, lod, error);
-                        self.handle(x, y, z, size, lod + 1);
+                        log::debug!("Node at {} with size {} and LOD {} is projected with error {}, but cannot descend further", pos, size, lod, error);
+                        self.handle(pos, size, lod + 1);
                     }
                 }
             }
-        }       
+        }
     }
 
     pub fn iterate(&self) {
-        self.handle(0, 0, 0, self.world_size, 0)
+        self.handle(UVec3::ZERO, self.world_size, 0)
     }
 }
 
@@ -115,7 +114,7 @@ mod tests {
 
     impl Clone for Node {
         fn clone(&self) -> Self {
-            Node { x: self.x, y: self.y, z: self.z, size: self.size, lod: self.lod }
+            Node { pos: self.pos, size: self.size, lod: self.lod }
         }
     }
 
@@ -127,7 +126,7 @@ mod tests {
 
     fn record_emit(req: &ChunkRequest) {
         EMITTED.with(|e| e.borrow_mut().push(ChunkRequest {
-            x: req.x, y: req.y, z: req.z, lod: req.lod,
+            pos: req.pos, lod: req.lod,
         }));
     }
 
@@ -159,7 +158,7 @@ mod tests {
 
         let tested = TESTED.with(|t| t.borrow().clone());
         let emitted = EMITTED.with(|e| e.borrow().iter().map(|r| ChunkRequest {
-            x: r.x, y: r.y, z: r.z, lod: r.lod,
+            pos: r.pos, lod: r.lod,
         }).collect());
         (tested, emitted)
     }
@@ -219,7 +218,7 @@ mod tests {
         assert_eq!(tested.len(), 1, "under-threshold must not descend");
         assert_eq!(emitted.len(), 1, "one root-sized chunk");
         assert_eq!(emitted[0].lod, 0, "world==chunk: chunk-relative lod is 0");
-        assert_eq!((emitted[0].x, emitted[0].y, emitted[0].z), (0, 0, 0));
+        assert_eq!(emitted[0].pos, UVec3::ZERO);
     }
 
     // D) A node that becomes sufficient BEFORE reaching the chunk boundary is
@@ -241,7 +240,7 @@ mod tests {
 
         // All eight chunk_size-aligned corners within the root must be present.
         let mut coords: Vec<(u32, u32, u32)> =
-            emitted.iter().map(|r| (r.x, r.y, r.z)).collect();
+            emitted.iter().map(|r| (r.pos.x, r.pos.y, r.pos.z)).collect();
         coords.sort();
         let mut expected: Vec<(u32, u32, u32)> = Vec::new();
         for x in [0, 8] {
@@ -278,7 +277,7 @@ mod tests {
         assert!(emitted.iter().all(|r| r.lod == 0), "boundary sufficiency => chunk lod 0");
         // Each emitted chunk is chunk_size-aligned and distinct.
         let mut coords: Vec<(u32, u32, u32)> =
-            emitted.iter().map(|r| (r.x, r.y, r.z)).collect();
+            emitted.iter().map(|r| (r.pos.x, r.pos.y, r.pos.z)).collect();
         coords.sort();
         coords.dedup();
         assert_eq!(coords.len(), 8, "no duplicate / oversized chunks");
@@ -338,7 +337,7 @@ mod tests {
         let (_, emitted) = run(16, 8, 1.0, |node| {
             if node.size == 16 {
                 NodeResult::Projected { error: 5.0 } // root over -> subdivide
-            } else if (node.x, node.y, node.z) == (8, 8, 8) {
+            } else if node.pos == UVec3::new(8, 8, 8) {
                 NodeResult::Projected { error: 0.5 } // this octant sufficient
             } else {
                 NodeResult::Empty
@@ -347,7 +346,7 @@ mod tests {
 
         // Exactly one chunk, at the sufficient octant's corner — not (0,0,0).
         assert_eq!(emitted.len(), 1, "only the sufficient octant emits");
-        assert_eq!((emitted[0].x, emitted[0].y, emitted[0].z), (8, 8, 8),
+        assert_eq!(emitted[0].pos, UVec3::new(8, 8, 8),
             "chunk must land in its own octant, not leak toward the origin");
     }
 
@@ -407,7 +406,7 @@ mod tests {
         // the same ground truth, so verdict and universe cannot drift apart.
         fn verdict(node: &Node) -> NodeResult {
             let units = node.size / 4; // unit cells per side under this node
-            let (bx, by, bz) = (node.x / 4, node.y / 4, node.z / 4);
+            let (bx, by, bz) = (node.pos.x / 4, node.pos.y / 4, node.pos.z / 4);
             let mut any = false;
             let mut all = true;
             for dx in 0..units {
@@ -451,14 +450,14 @@ mod tests {
         let mut remaining = universe.clone();
         for c in &emitted {
             // Each ChunkRequest is one chunk_size-aligned cell.
-            let cell = (c.x / 4, c.y / 4, c.z / 4);
-            assert_eq!((c.x % 4, c.y % 4, c.z % 4), (0, 0, 0),
-                "chunk origin must be chunk_size-aligned: {:?}", (c.x, c.y, c.z));
+            let cell = (c.pos.x / 4, c.pos.y / 4, c.pos.z / 4);
+            assert_eq!((c.pos.x % 4, c.pos.y % 4, c.pos.z % 4), (0, 0, 0),
+                "chunk origin must be chunk_size-aligned: {}", c.pos);
             assert!(cell.0 < 4 && cell.1 < 4 && cell.2 < 4,
-                "chunk out of world bounds: {:?}", (c.x, c.y, c.z));
+                "chunk out of world bounds: {}", c.pos);
             assert!(remaining.remove(&cell),
-                "chunk at {:?} covers an empty or already-covered cell (overlap / spill into empty space)",
-                (c.x, c.y, c.z));
+                "chunk at {} covers an empty or already-covered cell (overlap / spill into empty space)",
+                c.pos);
         }
 
         assert!(remaining.is_empty(),
